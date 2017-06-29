@@ -23,7 +23,7 @@ void mqttReconnect() {
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (client.connect("ESP8266Client")) {
+    if (client.connect(mqttClientName)) { // 
       Serial.println("connected");
       // once connected, subscribe
       client.subscribe(settings.mqttInTopic);

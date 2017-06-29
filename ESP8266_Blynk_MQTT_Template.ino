@@ -11,7 +11,8 @@
 // This is the access point to look for when hitting the config web server from your phone/PC
 #define AP_NAME "Blynk_Project_Name"
 // change salt to force settings to be re-written into EEPROM
-#define EEPROM_SALT 0
+#define EEPROM_SALT 0 // change this to force new settings in EEPROM
+#define mqttClientName "Some-ESP8266-Client-Name" // the client ID provided to the MQTT server
 
 // these are the defaults to try connecting with
 typedef struct {
@@ -21,8 +22,8 @@ typedef struct {
   char  blynkPort[6]      = "8442";
   char  mqttHost[33]      = "broker.hivemq.com"; // great for testing (only!)
   int   mqttPort          = 1883;
-  char  mqttInTopic[33]   = "esp8266MQTT"; // using same topic for in and out in demo
-  char  mqttOutTopic[33]  = "esp8266MQTT"; // so we will receive the messages we send
+  char  mqttInTopic[33]   = "ESP8266MQTT/test topic"; // using same topic for in and out in demo
+  char  mqttOutTopic[33]  = "ESP8266MQTT/test topic"; // so we will receive the messages we send
   int   salt              = EEPROM_SALT;
 } WMSettings;
 
@@ -34,17 +35,14 @@ char msg[50];
 int value = 0;
 bool shouldSaveConfig = false;
 
-//void configModeCallback(WiFiManager *myWiFiManager);
-
 void setup() {
-  // App setup before WiFi goes here
-
-
-  // End app setup before WiFi
-  
   const char *apName = AP_NAME;
   WiFiManager wifiManager;
 
+  // Begin app setup before WiFi
+
+  // End app setup before WiFi
+  
   Serial.begin(PORT_SPEED);
 
   wifiManager.setAPCallback(configModeCallback);
@@ -97,16 +95,15 @@ void setup() {
   }
 
   // Setup MQTT connection
-
   client.setServer(settings.mqttHost, settings.mqttPort);
   client.setCallback(mqttCallback);
+  mqttReconnect(); // connect to MQTT server
 
-// Start up Blynk connection
+  // Start up Blynk connection
   Serial.println("Starting Blynk config");
   Blynk.config(settings.blynkToken, settings.blynkServer, atoi(settings.blynkPort));
 
-  // App setup after WiFi goes here
-
+  // Begin app setup after WiFi
 
   // End app setup after WiFi
 
@@ -114,15 +111,8 @@ void setup() {
 }
 
 void loop() {
-  if (!client.connected()) {
-    // when reconnecting, we are not receiving commands from Blynk
-    mqttReconnect();
-  }
-  client.loop();
-  
-  Blynk.run();
-  
   long now = millis();
+
   if (now - lastMsg > 2000) {
     lastMsg = now;
     ++value;
@@ -131,5 +121,14 @@ void loop() {
     Serial.println(msg);
     client.publish(settings.mqttOutTopic, msg);
   }
+
+  if (!client.connected()) {
+    // when reconnecting, we are not receiving commands from Blynk
+    mqttReconnect();
+  }
+  client.loop();
+  
+  Blynk.run();
+  
 }
 
