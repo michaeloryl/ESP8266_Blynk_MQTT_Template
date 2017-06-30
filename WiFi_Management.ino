@@ -14,6 +14,10 @@ String getValue(String data, char separator, int index) {
   return found>index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
 
+void saveConfigCallback () {
+  shouldSaveConfig = true;
+}
+
 //gets called when WiFiManager enters configuration mode
 void configModeCallback (WiFiManager *myWiFiManager) {
   //if you used auto generated SSID, print it

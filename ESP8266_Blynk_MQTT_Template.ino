@@ -1,3 +1,16 @@
+/*
+ * The first time you start up with this code you will likely need to configure the ESP8266
+ * by accessing the built-in configuration website provided by the WiFi Manager (unless you
+ * have used WiFi Manager on this device before).  To do that, look for the WiFi Access
+ * Point that matches the AP_NAME defined below with your phone or computer.  Your device
+ * should then ask you to provide credentials or something similar that will take you to
+ * the built-in website on the ESP8266.  You can then select the access point that you want
+ * the device to use and save it.
+ * 
+ * You can cause this to happen again by starting up in a place where the current access
+ * point is unavailable, or by connecting pin D5 to ground (LOW) and starting up.
+ */
+
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <BlynkSimpleEsp8266.h>
@@ -11,7 +24,8 @@
 // This is the access point to look for when hitting the config web server from your phone/PC
 #define AP_NAME "Blynk_Project_Name"
 // change salt to force settings to be re-written into EEPROM
-#define EEPROM_SALT 0
+#define EEPROM_SALT 0 // change this to force new settings in EEPROM
+#define mqttClientName "Some-ESP8266-Client-Name" // the client ID provided to the MQTT server
 
 // these are the defaults to try connecting with
 typedef struct {
@@ -21,13 +35,12 @@ typedef struct {
   char  blynkPort[6]      = "8442";
   char  mqttHost[33]      = "broker.hivemq.com"; // great for testing (only!)
   int   mqttPort          = 1883;
-  char  mqttInTopic[33]   = "esp8266MQTT"; // using same topic for in and out in demo
-  char  mqttOutTopic[33]  = "esp8266MQTT"; // so we will receive the messages we send
+  char  mqttInTopic[33]   = "ESP8266MQTT/test topic"; // using same topic for in and out in demo
+  char  mqttOutTopic[33]  = "ESP8266MQTT/test topic"; // so we will receive the messages we send
   int   salt              = EEPROM_SALT;
 } WMSettings;
 
 WMSettings settings;
-
 WiFiClient espClient;
 PubSubClient client(espClient);
 long lastMsg = 0;
@@ -35,20 +48,14 @@ char msg[50];
 int value = 0;
 bool shouldSaveConfig = false;
 
-void saveConfigCallback () {
-  shouldSaveConfig = true;
-}
-
-void configModeCallback(WiFiManager *myWiFiManager);
 void setup() {
-  // App setup before WiFi goes here
-
-
-  // End app setup before WiFi
-  
   const char *apName = AP_NAME;
   WiFiManager wifiManager;
 
+  // Begin app setup before WiFi
+
+  // End app setup before WiFi
+  
   Serial.begin(PORT_SPEED);
 
   wifiManager.setAPCallback(configModeCallback);
@@ -101,16 +108,15 @@ void setup() {
   }
 
   // Setup MQTT connection
-
   client.setServer(settings.mqttHost, settings.mqttPort);
   client.setCallback(mqttCallback);
+  mqttReconnect(); // connect to MQTT server
 
-// Start up Blynk connection
+  // Start up Blynk connection
   Serial.println("Starting Blynk config");
   Blynk.config(settings.blynkToken, settings.blynkServer, atoi(settings.blynkPort));
 
-  // App setup after WiFi goes here
-
+  // Begin app setup after WiFi
 
   // End app setup after WiFi
 
@@ -118,15 +124,8 @@ void setup() {
 }
 
 void loop() {
-  if (!client.connected()) {
-    // when reconnecting, we are not receiving commands from Blynk
-    mqttReconnect();
-  }
-  client.loop();
-  
-  Blynk.run();
-  
   long now = millis();
+
   if (now - lastMsg > 2000) {
     lastMsg = now;
     ++value;
@@ -135,42 +134,14 @@ void loop() {
     Serial.println(msg);
     client.publish(settings.mqttOutTopic, msg);
   }
+
+  if (!client.connected()) {
+    // when reconnecting, we are not receiving commands from Blynk
+    mqttReconnect();
+  }
+  client.loop();
+  
+  Blynk.run();
+  
 }
 
-void mqttCallback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("Message arrived [");
-  Serial.print(topic);
-  Serial.print("] ");
-  for (int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
-  }
-  Serial.println();
-
-  // Switch on the LED if an 1 was received as first character
-  if ((char)payload[0] == '1') {
-    digitalWrite(BUILTIN_LED, LOW);   // Turn the LED on (Note that LOW is the voltage level
-    // but actually the LED is on; this is because
-    // it is acive low on the ESP-01)
-  } else {
-    digitalWrite(BUILTIN_LED, HIGH);  // Turn the LED off by making the voltage HIGH
-  }
-}
-
-void mqttReconnect() {
-  // Loop until we're reconnected
-  while (!client.connected()) {
-    Serial.print("Attempting MQTT connection...");
-    // Attempt to connect
-    if (client.connect("ESP8266Client")) {
-      Serial.println("connected");
-      // once connected, subscribe
-      client.subscribe(settings.mqttInTopic);
-    } else {
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
-      // Wait 5 seconds before retrying
-      delay(5000);
-    }
-  }
-}
