@@ -1,3 +1,16 @@
+/*
+ * The first time you start up with this code you will likely need to configure the ESP8266
+ * by accessing the built-in configuration website provided by the WiFi Manager (unless you
+ * have used WiFi Manager on this device before).  To do that, look for the WiFi Access
+ * Point that matches the AP_NAME defined below with your phone or computer.  Your device
+ * should then ask you to provide credentials or something similar that will take you to
+ * the built-in website on the ESP8266.  You can then select the access point that you want
+ * the device to use and save it.
+ * 
+ * You can cause this to happen again by starting up in a place where the current access
+ * point is unavailable, or by connecting pin D5 to ground (LOW) and starting up.
+ */
+
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <BlynkSimpleEsp8266.h>
